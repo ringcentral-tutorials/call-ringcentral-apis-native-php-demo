@@ -1,0 +1,6 @@
+{
+  "title": "Access RingCentral platform services using PHP native API.",
+  "repo": "https://github.com/ringcentral-tutorials/call-ringcentral-apis-native-php-demo",
+  "description": "In this step-by-step tutorial, you are going to learn how to authenticate and access RingCentral platform services using PHP native API. Click the \"Start\" button below to start the tutorial.",
+  "heroku": false
+}

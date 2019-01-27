@@ -1,0 +1,157 @@
+.chapter(data-title='Access RingCentral platform services using PHP native API')
+  .step(data-title='Clone and Setup the project', data-file='../README.md' data-highlight='10-20')
+    :markdown
+      ### Clone and Setup the project
+      Clone the project from GitHub and install the `dotenv` module.
+
+  .step(data-title='Create a RingCentral app', data-file='../README.md' data-highlight='25-28')
+    h3 Create a RingCentral app
+
+    p If you don't know how to create a RingCentral app. Click <a href="https://developer.ringcentral.com/library/getting-started.html">here</a> for instructions.
+
+  .step(data-title='Set Environment Variables', data-file='../environment/dotenv-sandbox')
+    :markdown
+     ### Set Environment Variables
+     Copy the Client id and Client secret and add them to the `.env-sandbox` file.
+     ```
+     RC_CLIENT_ID=
+     RC_CLIENT_SECRET=
+     ```
+     Add the account login credentials to the `.env-sandbox` file.
+     ```
+     RC_USERNAME=
+     RC_PASSWORD=
+     RC_EXTENSION=
+     ```
+
+     If you want to specify variables for your production environment, repeat this step for the `.env-production` file.
+
+  .step(data-title='Getting started', data-file='../ringcentral.php' data-highlight='1-2')
+    :markdown
+      ### Getting started
+
+      Let's start by creating a file named `ringcentral.php` and include dependent libraries.
+
+  .step(data-title='Load the environment variables', data-file='../ringcentral.php' data-highlight='4-17')
+    :markdown
+      ### Load the environment variables
+      Read the ENVIRONMENT value from the `.env` file and load the `.env-sandbox` or `.env-production` accordingly.
+
+      ### Specify a .txt file to keep the authentication data
+      For the sandbox environment, we save the data to the `tokens_sb.txt`.
+
+      For the production environment, we save the data to the `tokens_pd.txt`.
+
+      In your real application, you may want to keep the authentication data in a database. Or keep the file in a hidden place because it contains the access token and the refresh token!
+
+  .step(data-title='Create a reusable class', data-file='../ringcentral.php' data-highlight='19-21')
+    :markdown
+      ### Create a reusable class
+      To make this tutorial code reusable and extensible, we define the `RingCentral` class and implement a few utility functions.
+      ```
+      authenticate()
+      get()
+      post()
+      ```
+
+  .step(data-title='Implement authentication - 1', data-file='../ringcentral.php' data-highlight='23-36')
+    :markdown
+      ### Implement authentication - 1
+
+      Let's implement the `authenticate()` function to handle platform authentication.
+
+      1) Specify the `$url` variable by adding the `/restapi/oauth/token` endpoint to the platform server URL we defined in the configuration .env-[environment] file.
+
+      2) Specify the `$basic` authorization string by joining the client Id with the client secret separated by a colon ":".
+
+      3) Define the `$headers` variable with the `Content-Type`, `Accept` and `Authorization` for the basic auth scheme.
+
+      4) Define the `$body` object with the `grant_type`, `username` and `password`. We encode the body for just in the case the username is an email address which has special characters.
+
+  .step(data-title='Implement authentication - 2', data-file='../ringcentral.php' data-highlight='56-87')
+    :markdown
+      ### Implement authentication - 2
+
+      1) Set curl options and use the POST method to send the authentication request.
+
+      2) Handle `$curlError` and check the `$httpCode`. If the `$httpCode` is 200, we decode the `$strResponse` to create a JSON object `$jsonObj`.
+
+      3) Define a `$tokensObj` variable and assign the `$jsonObj` to the "tokens" key/value pair. We also create the current timestamp and assign it to the "timestamp" key/value pair.
+
+      4) Save the `$tokensObj` into a local file. I will discuss about how to use the file in the next step.
+
+      5) Extract the `access_token` from the `$jsonObj` and keep the token in the class `$this->access_token` variable.
+
+  .step(data-title='Implement authentication - 3', data-file='../ringcentral.php' data-highlight='37-54')
+    :markdown
+      ### Implement authentication - 3
+
+      We can avoid posting an authentication request every time we need access to the platform by checking if the access token is still valid.
+
+      To do that, we check the existence of the `$tokens_file` file.
+
+      If the file exists, we read the file content and specify the `$expire_time` variable by subtracting the `$tokensObj->timestamp` from the current time. Then compare the `$expire_time` with the access token expiration time `$tokensObj->tokens->expires_in`.
+
+      If the `$expire_time` is less than the `$tokensObj->tokens->token_expires_in`, it means that the access token is still valid. So we save the `$tokensObj->tokens->access_token` to the class `$this->access_token`.
+
+      If the `$expire_time` is greater than the access token expiration time, it means that the access token has expired. So we move on to compare the `$expire_time` with the refresh token expiration time `$tokensObj->tokens->refresh_token_expires_in`.
+
+      If  the `$expire_time` is less than the `$tokensObj->tokens->refresh_token_expires_in`, it means that the  refresh token is still valid. So we can use it to request for a new access token. In this case, we redefine the `$body` with the `grant_type` value is "refresh_token", and the `refresh_token` value is the actual refresh token read from the local file. Then we proceed to call the post request as discussed in the previous step.
+
+      If the `$tokens_file` does not exist, we proceed the authentication as discussed in the previous step.
+
+  .step(data-title='GET request implementation', data-file='../ringcentral.php' data-highlight='89-126')
+    :markdown
+      ### GET request implementation
+      Now we implement the `get()` function to handle HTTP GET requests:
+
+      1) Call the `authenticate()` function to handle the authentication and get the access token.
+
+      2) Specify the `$url` variable by adding the `$endpoint` to the platform server URL we defined in the configuration .env-[environment] file.
+
+      3) Call the http_build_query() function to build query parameters from the `$params` then add it to the `$url`.
+
+      4) Define the `$headers` variable with the "Accept" and "Authorization" key/value pairs with the "Authorization" scheme is "Bearer" followed by the access token.
+
+      5) Set curl options and send the GET request to RingCentral platform.
+
+      6) Handle `$curlError` and check the `$httpCode` then return the `$strResponse`.
+
+  .step(data-title='POST request implementation', data-file='../ringcentral.php' data-highlight='128-169')
+    :markdown
+      ### POST request implementation
+      Now we implement the `post` function to handle HTTP POST requests
+
+      1) Call the `authenticate()` function to handle the authentication and get the access token.
+
+      2) Specify the `$url` variable by adding the `$endpoint` to the platform server URL we defined in the configuration .env-[environment] file.
+
+      3) Define the `$body` variable and set the `$params` as its value.
+
+      4) Define the `$headers` variable with the "Content-Type", "Accept" and "Authorization" key/value pairs  with the "Authorization" scheme is "Bearer" followed by the access token.
+
+      5) Set curl options and send the POST request to RingCentral platform.
+
+      6) Handle `$curlError` and check the `$httpCode` then return the `$strResponse`.
+
+  .step(data-title='Call RingCentral Platform APIs', data-file='../demo.php' data-highlight='1-36')
+    :markdown
+      ### Call RingCentral Platform APIs
+      Now let's create a file named `demo.php` and use the `RingCentral` class as shown in the demo code on the right-hand side.
+
+      In this demo, we implement 2 test functions:
+
+      `get_account_extension()`:
+
+      We use the `get()` function from the RingCentral class to get account extensions' information and print them out on the console.
+
+      `send_sms()`:
+
+      We use the `post()` function from the RingCentral class to send an SMS message to a `recipientNumber` and print the response out on the console.
+
+      ### Run the demo app.
+      ```
+      $ php demo.php
+      ```
+
+      You can further develop the RingCentral class to add PUT and DELETE methods as you wish.
